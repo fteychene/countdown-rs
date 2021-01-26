@@ -1,0 +1,148 @@
+on:
+  push:
+    tags:
+      - 'v*'
+
+name: Release on tag
+
+jobs:
+  build-mac:
+    name: Build release for mac
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@master
+      - name: Install rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - name: Test for macos
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+      - name: Build macos release binary
+        uses: actions-rs/cargo@v1
+        env:
+          PKG_CONFIG_ALLOW_CROSS: 1
+        with:
+          command: build
+          args: --release
+      - name: Store macos release binary
+        uses: actions/upload-artifact@v1
+        with:
+          name: countdown-x86_64-darwin
+          path: target/release/countdown
+  build:
+    name: Build release
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [x86_64-unknown-linux-gnu, x86_64-unknown-linux-musl, x86_64-pc-windows-gnu]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@master
+      - name: Install rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - name: Test for ${{ matrix.target }}
+        uses: actions-rs/cargo@v1
+        with:
+          use-cross: true
+          command: test
+          args: --target ${{ matrix.target }}
+      - name: Build ${{ matrix.target }} release binary
+        uses: actions-rs/cargo@v1
+        env:
+          PKG_CONFIG_ALLOW_CROSS: 1
+        with:
+          use-cross: true
+          command: build
+          args: --target ${{ matrix.target }} --release
+      - name: Store ${{ matrix.target }} release binary
+        uses: actions/upload-artifact@v1
+        with:
+          name: countdown-${{ matrix.target }}
+          path: target/${{ matrix.target }}/release/countdown
+        if: matrix.target != 'x86_64-pc-windows-gnu'
+      - name: Store ${{ matrix.target }} release binary
+        uses: actions/upload-artifact@v1
+        with:
+          name: countdown-${{ matrix.target }}
+          path: target/${{ matrix.target }}/release/countdown.exe
+        if: matrix.target == 'x86_64-pc-windows-gnu'
+  release:
+    name: Create release
+    needs: [build, build-mac]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download build for GNU Linux
+        uses: actions/download-artifact@v1
+        with:
+          name: countdown-x86_64-unknown-linux-gnu
+      - name: Download build for Musl Linus
+        uses: actions/download-artifact@v1
+        with:
+          name: countdown-x86_64-unknown-linux-musl
+      - name: Download build for Windows
+        uses: actions/download-artifact@v1
+        with:
+          name: countdown-x86_64-pc-windows-gnu
+      - name: Download build for MacOs
+        uses: actions/download-artifact@v1
+        with:
+          name: countdown-x86_64-darwin
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          body: |
+            *Ref* : ${{ github.ref }}
+
+            Changes in this Release :
+          draft: true
+          prerelease: false
+      - name: Upload Linux gnu binary
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: countdown-x86_64-unknown-linux-gnu/countdown
+          asset_name: countdown-x86_64-linux-gnu
+          asset_content_type: application/octet-stream
+      - name: Upload Linux musl binary
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: countdown-x86_64-unknown-linux-musl/countdown
+          asset_name: countdown-x86_64-linux-musl
+          asset_content_type: application/octet-stream
+      - name: Upload Windows binary
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: countdown-x86_64-pc-windows-gnu/countdown.exe
+          asset_name: countdown.exe
+          asset_content_type: application/octet-stream
+      - name: Upload MacOs binary
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: countdown-x86_64-darwin/countdown
+          asset_name: countdown-x86_64-darwin
+          asset_content_type: application/octet-stream
