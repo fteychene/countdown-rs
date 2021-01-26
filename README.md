@@ -19,6 +19,11 @@ cargo build --release
 cargo install --git https://github.com/fteychene/countdown-rs.git
 ```
 
+#### Release
+
+Find the binary for your OS in the [latest release](https://github.com/fteychene/countdown-rs/releases/latest)
+
+
 ## Usage
 
 ```
