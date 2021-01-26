@@ -21,8 +21,14 @@ cargo install --git https://github.com/fteychene/countdown-rs.git
 
 #### Release
 
-Find the binary for your OS in the [latest release](https://github.com/fteychene/countdown-rs/releases/latest)
+Find the binary for your OS in the [latest release](https://github.com/fteychene/countdown-rs/releases/latest) and add it in your PATH.
 
+Example for Linux
+```bash
+wget -O countdown https://github.com/fteychene/countdown-rs/releases/download/v0.0.1/countdown-x86_64-linux-gnu
+chmod +x countdown
+mv countdown /usr/local/bin/
+```
 
 ## Usage
 
